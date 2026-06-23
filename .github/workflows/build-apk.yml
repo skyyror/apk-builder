@@ -30,18 +30,16 @@ jobs:
           echo "Downloading ZIP from $ZIP_URL"
           wget -O project.zip "$ZIP_URL"
           unzip -q project.zip
-          # Hapus folder zip biar rata
-          mv *.[^.]*. 2>/dev/null || true
           ls -la
 
       - name: Install dependencies
-        working-directory:./project
+        working-directory: ./project
         run: |
           flutter pub get || flutter pub get || flutter pub get
 
       - name: Build APK Release
-        working-directory:./project
-        run: flutter build apk --release --split-per-abi
+        working-directory: ./project
+        run: flutter build apk --split-per-abi --release
 
       - name: Send APK to Telegram
         env:
@@ -53,7 +51,7 @@ jobs:
           echo "APK found: $APK"
           curl -F chat_id=$CHAT_ID -F document=@$APK \
           "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
-          -F caption="✅ Build Selesai!\n\nAPK: $(basename $APK)\nSize: $(du -h $APK | cut -f1)"
+          -F caption="✅ Build Selesai! APK siap install"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.4.0
