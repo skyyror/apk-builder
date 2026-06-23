@@ -19,34 +19,41 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2.18.0
         with:
-          flutter-version: '3.22.3'
+          flutter-version: '3.24.5'
           channel: 'stable'
 
-      - name: Get project ZIP
+      - name: Download & Extract ZIP
+        env:
+          ZIP_URL: ${{ github.event.client_payload.zip_url }}
         run: |
-          echo "Download ZIP dari Telegram..."
-          # Nanti kita isi link download ZIP dari bot
-          # Sementara pake file dummy dulu buat test
-          mkdir project
-          cd project
+          mkdir project && cd project
+          echo "Downloading ZIP from $ZIP_URL"
+          wget -O project.zip "$ZIP_URL"
+          unzip -q project.zip
+          # Hapus folder zip biar rata
+          mv *.[^.]*. 2>/dev/null || true
+          ls -la
 
       - name: Install dependencies
-        working-directory: ./project
-        run: flutter pub get
+        working-directory:./project
+        run: |
+          flutter pub get || flutter pub get || flutter pub get
 
       - name: Build APK Release
-        working-directory: ./project
+        working-directory:./project
         run: flutter build apk --release --split-per-abi
 
-      - name: Upload APK to Telegram
+      - name: Send APK to Telegram
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ github.event.client_payload.chat_id }}
         run: |
-          APK_PATH=$(find build/app/outputs/flutter-apk -name "app-arm64-v8a-release.apk" | head -n 1)
-          curl -F chat_id=$CHAT_ID -F document=@$APK_PATH \
-          https://api.telegram.org/bot$BOT_TOKEN/sendDocument \
-          -F caption="✅ Build Selesai! APK siap install"
+          APK=$(find build/app/outputs/flutter-apk -name "*arm64-v8a-release.apk" | head -n 1)
+          if [ -z "$APK" ]; then APK=$(find build/app/outputs/flutter-apk -name "app-release.apk" | head -n 1); fi
+          echo "APK found: $APK"
+          curl -F chat_id=$CHAT_ID -F document=@$APK \
+          "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" \
+          -F caption="✅ Build Selesai!\n\nAPK: $(basename $APK)\nSize: $(du -h $APK | cut -f1)"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.4.0
