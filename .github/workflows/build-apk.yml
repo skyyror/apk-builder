@@ -1,0 +1,34 @@
+name: Build APK
+on:
+  repository_dispatch:
+    types: [build-apk]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: build
+
+    - name: Setup Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.22.0'
+
+    - name: Build APK
+      run: flutter pub get && flutter build apk --release
+
+    - name: Send to Telegram
+      run: |
+        curl -F chat_id=${{ github.event.client_payload.chat_id }} \
+             -F document=@build/app/outputs/flutter-apk/app-release.apk \
+             -F caption="✅ Build selesai!" \
+             https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendDocument
